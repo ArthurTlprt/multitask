@@ -114,11 +114,11 @@ pgm_parse(FILE *fp)
     }
 
     struct image *img = image_alloc(height, width);
-    if (img == NULL)
-    {
-        fprintf(stderr, "Unable to allocate image struct\n");
-        return NULL;
-    }
+   if (img == NULL)
+   {
+       fprintf(stderr, "Unable to allocate image struct\n");
+       return NULL;
+   }
 
     fread(img->raster[0], sizeof(unsigned char), height * width, fp);
 
@@ -179,6 +179,7 @@ void convolve(struct image *img, kernel_t *kernels[2], struct image *out)
             out->raster[row][col] = (unsigned char)val;
         }
     }
+    printf("end conv\n");
 }
 
 
@@ -229,6 +230,8 @@ int main(int argc, char *argv[])
     //kernel_t *kernels[] = {&sharpen, NULL};
     //kernel_t *kernels[] = {&edge_detect_x, &edge_detect_y};
 
+
+
     FILE *fp = fopen(argv[1], "r");
     if (fp == NULL)
     {
@@ -246,37 +249,54 @@ int main(int argc, char *argv[])
     imgtop.width = img->width;
 
     struct image outtop;
-    outtop.raster = img->raster;
-    outtop.height = img->height/2;
-    outtop.width = img->width;
+    outtop.raster = out->raster;
+    outtop.height = out->height/2;
+    outtop.width = out->width;
 
-    convolve(&imgtop, kernels, &outtop);
 
     struct image imgbottom;
-    imgbottom.raster = outtop.raster[imgtop.height-1];
-    imgbottom.height = outtop.height-imgtop.height+1;
-    imgbottom.width = outtop.width;
+    imgbottom.raster = &img->raster[imgtop.height-1];
+    imgbottom.height = img->height-imgtop.height+1;
+    imgbottom.width = img->width;
 
     struct image outbottom;
-    outbottom.raster = img->raster[imgtop.height];
-    outbottom.height = img->height-imgtop.height;
-    outbottom.width = outtop.width;
+    outbottom.raster = &out->raster[imgtop.height-1];
+    outbottom.height = out->height/2;
+    outbottom.width = out->width;
 
-    convolve(&imgbottom, kernels, &outbottom);
 
-    // merge out
-    for (int row = 0; row < img->height; ++row) {
-      for (int col = 0; col < img->width; ++col) {
-        if(row < outtop.height) {
-          out->raster[row][col] = outtop.raster[row][col];
-        } else {
-          printf("%d\n", imgtop.height);
-          printf("%d\n", imgtop.height-1);
-          printf("%d\n", img->height-imgtop.height);
-          out->raster[row][col] = outbottom.raster[0][0];
-        }
-      }
-    }
+    pid_t pids[1];
+    int i;
+    int n = 1;
+
+    /* Start children. */
+    // for (i = 0; i < n; ++i) {
+    //   if ((pids[i] = fork()) < 0) {
+    //     perror("fork");
+    //     abort();
+    //   } else if (pids[i] == 0) {
+    //     if(i == 0) {
+    //       convolve(&imgtop, kernels, &outtop);
+    //       exit(0);
+    //     }
+    //   }
+    // }
+    //
+    // int status;
+    // pid_t pid;
+    // while (n > 0) {
+    //   pid = wait(&status);
+    //   printf("Child with PID %ld exited with status 0x%x.\n", (long)pid, status);
+    //   --n;  // TODO(pts): Remove pid from the pids array.
+    // }
+
+    // convolve(&imgtop, kernels, &outtop);
+    // convolve(&imgbottom, kernels, &outbottom);
+    
+    convolve(img, kernels, out);
+    pgm_write_header(out, fp);
+    pgm_write_raster(out, fp);
+
 
     fp = fopen(argv[2], "w");
     if (fp == NULL)
@@ -285,8 +305,6 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    pgm_write_header(out, fp);
-    pgm_write_raster(out, fp);
     fclose(fp);
 
     image_free(img);
