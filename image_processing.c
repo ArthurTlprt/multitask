@@ -243,6 +243,7 @@ int main(int argc, char *argv[])
     fclose(fp);
     struct image *out = image_alloc(img->height, img->width);
 
+
     struct image imgtop;
     imgtop.raster = img->raster;
     imgtop.height = img->height/2+1;
@@ -265,45 +266,31 @@ int main(int argc, char *argv[])
     outbottom.width = out->width;
 
 
-    pid_t pids[1];
-    int i;
-    int n = 1;
-
-    /* Start children. */
-    // for (i = 0; i < n; ++i) {
-    //   if ((pids[i] = fork()) < 0) {
-    //     perror("fork");
-    //     abort();
-    //   } else if (pids[i] == 0) {
-    //     if(i == 0) {
-    //       convolve(&imgtop, kernels, &outtop);
-    //       exit(0);
-    //     }
-    //   }
-    // }
-    //
-    // int status;
-    // pid_t pid;
-    // while (n > 0) {
-    //   pid = wait(&status);
-    //   printf("Child with PID %ld exited with status 0x%x.\n", (long)pid, status);
-    //   --n;  // TODO(pts): Remove pid from the pids array.
-    // }
-
-    // convolve(&imgtop, kernels, &outtop);
-    // convolve(&imgbottom, kernels, &outbottom);
-    
-    convolve(img, kernels, out);
-    pgm_write_header(out, fp);
-    pgm_write_raster(out, fp);
-
+    int n=1;
+    pid_t pid = fork();
 
     fp = fopen(argv[2], "w");
     if (fp == NULL)
     {
-        fprintf(stderr, "Unable to open output file : %s\n", argv[2]);
-        return EXIT_FAILURE;
+      fprintf(stderr, "Unable to open output file : %s\n", argv[2]);
+      return EXIT_FAILURE;
     }
+
+    if(pid == 0) {
+      convolve(&imgtop, kernels, &outtop);
+      exit(0);
+    }else if(pid!=-1){
+      convolve(&imgbottom, kernels, &outbottom);
+    }
+
+    int status;
+    while(n>0) {
+      pid = wait(&status);
+      n--;
+    }
+
+    pgm_write_header(out, fp);
+    pgm_write_raster(out, fp);
 
     fclose(fp);
 
