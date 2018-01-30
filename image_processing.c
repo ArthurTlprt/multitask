@@ -84,7 +84,7 @@ pgm_parse(FILE *fp)
     }
 
     int width, height;
-    {    // pgm_write_raster(&outtop, fp);    //    // pgm_write_raster(&outtop, fp); pgm_write_raster(&outtop, fp);
+    {
         int match = fscanf(fp, "%d %d\n", &width, &height);
         if (match != 2)
         {
@@ -114,11 +114,11 @@ pgm_parse(FILE *fp)
     }
 
     struct image *img = image_alloc(height, width);
-   if (img == NULL)
-   {
-       fprintf(stderr, "Unable to allocate image struct\n");
-       return NULL;
-   }
+    if (img == NULL)
+    {
+        fprintf(stderr, "Unable to allocate image struct\n");
+        return NULL;
+    }
 
     fread(img->raster[0], sizeof(unsigned char), height * width, fp);
 
@@ -179,9 +179,7 @@ void convolve(struct image *img, kernel_t *kernels[2], struct image *out)
             out->raster[row][col] = (unsigned char)val;
         }
     }
-    printf("end conv\n");
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -224,13 +222,11 @@ int main(int argc, char *argv[])
                              {0, 1, 0},
                              {0, 0, 0}};
 
-    //kernel_t *kernels[] = {&identity, NULL};
-    //kernel_t *kernels[] = {&box_blur, NULL};
+    // kernel_t *kernels[] = {&identity, NULL};
+    // kernel_t *kernels[] = {&box_blur, NULL};
     kernel_t *kernels[] = {&edge_detect2, NULL};
-    //kernel_t *kernels[] = {&sharpen, NULL};
-    //kernel_t *kernels[] = {&edge_detect_x, &edge_detect_y};
-
-
+    // kernel_t *kernels[] = {&sharpen, NULL};
+    // kernel_t *kernels[] = {&edge_detect_x, &edge_detect_y};
 
     FILE *fp = fopen(argv[1], "r");
     if (fp == NULL)
@@ -241,57 +237,19 @@ int main(int argc, char *argv[])
 
     struct image *img = pgm_parse(fp);
     fclose(fp);
+
     struct image *out = image_alloc(img->height, img->width);
-
-
-    struct image imgtop;
-    imgtop.raster = img->raster;
-    imgtop.height = img->height/2+1;
-    imgtop.width = img->width;
-
-    struct image outtop;
-    outtop.raster = out->raster;
-    outtop.height = out->height/2;
-    outtop.width = out->width;
-
-
-    struct image imgbottom;
-    imgbottom.raster = &img->raster[imgtop.height-1];
-    imgbottom.height = img->height-imgtop.height+1;
-    imgbottom.width = img->width;
-
-    struct image outbottom;
-    outbottom.raster = &out->raster[imgtop.height-1];
-    outbottom.height = out->height/2;
-    outbottom.width = out->width;
-
-
-    int n=1;
-    pid_t pid = fork();
+    convolve(img, kernels, out);
 
     fp = fopen(argv[2], "w");
     if (fp == NULL)
     {
-      fprintf(stderr, "Unable to open output file : %s\n", argv[2]);
-      return EXIT_FAILURE;
-    }
-
-    if(pid == 0) {
-      convolve(&imgtop, kernels, &outtop);
-      exit(0);
-    }else if(pid!=-1){
-      convolve(&imgbottom, kernels, &outbottom);
-    }
-
-    int status;
-    while(n>0) {
-      pid = wait(&status);
-      n--;
+        fprintf(stderr, "Unable to open output file : %s\n", argv[2]);
+        return EXIT_FAILURE;
     }
 
     pgm_write_header(out, fp);
     pgm_write_raster(out, fp);
-
     fclose(fp);
 
     image_free(img);
