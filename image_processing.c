@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <time.h>
 
 struct image
 {
@@ -183,6 +184,9 @@ void convolve(struct image *img, kernel_t *kernels[2], struct image *out)
 
 int main(int argc, char *argv[])
 {
+  time_t t1, t2;
+
+   t1 = time(NULL);
 
     if (argc != 3)
     {
@@ -254,6 +258,9 @@ int main(int argc, char *argv[])
 
     image_free(img);
     image_free(out);
+
+    t2 = time(NULL);
+    printf("time to compute: %ld\n", t2-t1);
 
     return 0;
 }
