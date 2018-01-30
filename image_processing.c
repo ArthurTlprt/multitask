@@ -184,9 +184,7 @@ void convolve(struct image *img, kernel_t *kernels[2], struct image *out)
 
 int main(int argc, char *argv[])
 {
-  time_t t1, t2;
-
-   t1 = time(NULL);
+  clock_t begin = clock();
 
     if (argc != 3)
     {
@@ -259,8 +257,10 @@ int main(int argc, char *argv[])
     image_free(img);
     image_free(out);
 
-    t2 = time(NULL);
-    printf("time to compute: %ld\n", t2-t1);
+    clock_t end = clock();
+    double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+
+    printf("time to compute: %ld\n", time_spent);
 
     return 0;
 }
