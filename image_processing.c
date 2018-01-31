@@ -165,7 +165,6 @@ typedef double kernel_t[3][3];
 
 void convolve(struct image *img, kernel_t *kernels[2], struct image *out, int n, int nmax)
 {
-    printf("ma position du debut: %d", img->height/nmax*(n-1));
     int row=0;
     for ( row = img->height/nmax*(n-1); row < img->height/nmax*n; ++row)
     {
@@ -183,17 +182,6 @@ void convolve(struct image *img, kernel_t *kernels[2], struct image *out, int n,
             out->raster[row][col] = (unsigned char)val;
         }
     }
-    printf("end conv: %d\n",row);
-}
-
-
-
-
-
-
-int foo(const char *whoami) {
-    printf("I am a %s.  My pid is:%d  my ppid is %d\n", whoami, getpid(), getppid() );
-    return 1;
 }
 
 int func(int n,int nmax,struct image* img,struct image* out, kernel_t *kernels[2],FILE *fp)
@@ -207,8 +195,7 @@ int func(int n,int nmax,struct image* img,struct image* out, kernel_t *kernels[2
         exit(0);
     }
     if (pid==0) {
-        foo("child");
-	convolve(img,kernels,out,nmax-(n-1),nmax);
+	      convolve(img,kernels,out,nmax-(n-1),nmax);
         pgm_write_raster(out,fp,nmax-(n-1),nmax);
         n = n-1;
         func(n,nmax,img,out,kernels,fp);
@@ -228,9 +215,9 @@ int main(int argc, char *argv[])
 
   clock_t begin = clock();
 
-    if (argc != 3)
+    if (argc != 4)
     {
-        fprintf(stderr, "Usage: %s filename1 filename2\n", argv[0]);
+        fprintf(stderr, "Usage: %s filename1 filename2 n_processe(s)\n", argv[0]);
         return EXIT_FAILURE;
     }
 
@@ -286,14 +273,11 @@ int main(int argc, char *argv[])
     struct image *out = image_alloc(img->height, img->width);
 
 
-
     fp = fopen(argv[2], "w");
     pgm_write_header(out, fp);
 
-
-    //int b =get_nprocs();
-    //printf(" mon pid est :%d\n", getpid());
-    int n=1;
+    int n= atoi(argv[3]);
+    printf("Running on %d processe(s)\n", n);
 
     int nmax=n;
 
@@ -305,9 +289,6 @@ int main(int argc, char *argv[])
       return EXIT_FAILURE;
     }
 
-    //pgm_write_raster(out, fp);
-
-
     fclose(fp);
     image_free(img);
     image_free(out);
@@ -315,7 +296,7 @@ int main(int argc, char *argv[])
 
       clock_t end = clock();
       double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-      printf("it took %f", time_spent);
+      printf("\nit took %f en secondes\n", time_spent);
 
     return 0;
 }
