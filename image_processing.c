@@ -213,7 +213,7 @@ int func(int n,int nmax,struct image* img,struct image* out, kernel_t *kernels[2
 int main(int argc, char *argv[])
 {
 
-  clock_t begin = clock();
+  // clock_t begin = clock();
 
     if (argc != 4)
     {
@@ -294,9 +294,8 @@ int main(int argc, char *argv[])
     image_free(out);
 
 
-      clock_t end = clock();
-      double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-      printf("\nit took %f en secondes\n", time_spent);
+      // clock_t end = clock();
+      // double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 
     return 0;
 }
