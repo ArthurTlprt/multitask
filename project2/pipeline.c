@@ -12,74 +12,31 @@
 #define WRITE_END 1
 
 
-void run_pipeline(char *commands[7][4], int pipes[6][2], int n_task) {
-  pid_t pid;
-  pid = fork();
-
-  if(pid==0) {
-    if( n_task < 6) { // la derniere tache ne doit pas parler à une autre tache
-      dup2(pipes[n_task][WRITE_END], STDOUT_FILENO);
-      close(pipes[n_task][READ_END]);
-      close(pipes[n_task][WRITE_END]);
-      printf("command: %s talks to someone\n", commands[n_task][0]);
-    }
-    if( n_task > 0) { // Personne ne parle à la premiere tache
-      dup2(pipes[n_task-1][READ_END], STDIN_FILENO);
-      close(pipes[n_task-1][WRITE_END]);
-      close(pipes[n_task-1][READ_END]);
-      printf("command: %s listen to someone\n", commands[n_task][0]);
-    }
+void run_pipeline(char *commands[7][5], int in_fd, int n_task) {
+  if(n_task == 4) { // derniere commande
+    dup2(in_fd, STDIN_FILENO); // je lis l'entree du pipe
     execvp(commands[n_task][0], commands[n_task]);
-    printf("command: %s \n", commands[n_task][0]);
-    exit(1);
-
-  } else if(n_task != 6){
-    run_pipeline(commands, pipes, n_task+1);
-  } else {
-    int status;
-    // to do: close all pipelines
-    printf("wait: \n");
-    waitpid(pid, &status, 0);
+    return;
   }
+  int fd[2]; // nouveau pipe
+  pipe(fd);
+  switch(fork()){
+      case -1: // ERROR
+          break;
+      case 0: // Child
+          close(fd[READ_END]);
+          dup2(in_fd, STDIN_FILENO);
+          dup2(fd[WRITE_END], STDOUT_FILENO);
+          execvp(commands[n_task][0], commands[n_task]);
+          exit(EXIT_FAILURE);
+          break;
+      default: // Parent
+          close(fd[WRITE_END]);
+          close(in_fd);
+          run_pipeline(commands,fd[READ_END],n_task+1);
+          break;
+    }
 }
-
-// int create_pipe(struct Task *tasks[7]) {
-//   pid_t pid;
-//   int fd[2];
-//
-//   pipe(fd);
-//   pid = fork();
-//
-//   if(pid==0)
-//   {
-//     dup2(fd[WRITE_END], STDOUT_FILENO);
-//     close(fd[READ_END]);
-//     close(fd[WRITE_END]);
-//     execvp(tasks[0][0], tasks[0]);
-//     exit(1);
-//   }
-//   else
-//   {
-//     pid=fork();
-//
-//     if(pid==0)
-//     {
-//       dup2(fd[READ_END], STDIN_FILENO);
-//       close(fd[WRITE_END]);
-//       close(fd[READ_END]);
-//       execvp(tasks[2][0], tasks[2]);
-//       exit(1);
-//     }
-//     else
-//     {
-//       int status;
-//       close(fd[READ_END]);
-//       close(fd[WRITE_END]);
-//       waitpid(pid, &status, 0);
-//     }
-//   }
-//   return 0;
-// }
 
 
 int main(int argc, char *argv[]) {
@@ -90,17 +47,17 @@ int main(int argc, char *argv[]) {
     pipe(pipes[i]);
   }
 
-  char *commands[7][4] = {
-    {"cat", "big.txt"},
-    {"tr", "-s", "'[:digit:]'", "' '"},
-    {"tr", "'[A-Z]'", "'[a-z]'"},
-    {"tr", "-s", "'[:punct:]'", "' '"},
-    {"tr", "-s", "'\n\f\t\r '", "'\n'"},
-    {"sort"},
-    {"uniq", "-c"}
+  char *commands[7][5] = {
+    {"cat", "big.txt", NULL},
+    {"tr", "-s", "'[:digit:]'", "' '", NULL},
+    {"tr", "'[A-Z]'", "'[a-z]'", NULL},
+    {"tr", "-s", "'[:punct:]'", "' '", NULL},
+    {"tr", "-s", "'\n\f\t\r '", "'\n'", NULL}/*,
+    {"sort", NULL},
+    {"uniq", "-c", NULL}*/
   };
 
-  run_pipeline(commands, pipes, 0);
+  run_pipeline(commands, STDIN_FILENO, 0);
 
   return 0;
 }
