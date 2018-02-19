@@ -13,7 +13,7 @@
 
 
 void run_pipeline(char *commands[7][5], int in_fd, int n_task) {
-  if(n_task == 4) { // derniere commande
+  if(n_task == 6) { // derniere commande
     dup2(in_fd, STDIN_FILENO); // je lis l'entree du pipe
     execvp(commands[n_task][0], commands[n_task]);
     return;
@@ -49,12 +49,12 @@ int main(int argc, char *argv[]) {
 
   char *commands[7][5] = {
     {"cat", "big.txt", NULL},
-    {"tr", "-s", "'[:digit:]'", "' '", NULL},
-    {"tr", "'[A-Z]'", "'[a-z]'", NULL},
-    {"tr", "-s", "'[:punct:]'", "' '", NULL},
-    {"tr", "-s", "'\n\f\t\r '", "'\n'", NULL}/*,
+    {"tr", "-s", "[:digit:]", " ", NULL},
+    {"tr", "[A-Z]", "[a-z]", NULL},
+    {"tr", "-s", "[:punct:]", " ", NULL},
+    {"tr", "-s", "\n\f\t\r ", "\n", NULL},
     {"sort", NULL},
-    {"uniq", "-c", NULL}*/
+    {"uniq", "-c", NULL}
   };
 
   run_pipeline(commands, STDIN_FILENO, 0);
