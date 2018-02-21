@@ -41,12 +41,6 @@ void run_pipeline(char *commands[7][5], int in_fd, int n_task) {
 
 int main(int argc, char *argv[]) {
 
-  int pipes[6][2];
-
-  for(int i=0; i < 6; i++) {
-    pipe(pipes[i]);
-  }
-
   char *commands[7][5] = {
     {"cat", "big.txt", NULL},
     {"tr", "-s", "[:digit:]", " ", NULL},
