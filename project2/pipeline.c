@@ -25,15 +25,15 @@ void run_pipeline(char *commands[7][5], int in_fd, int n_task) {
           break;
       case 0: // Child
           close(fd[READ_END]);
-          dup2(in_fd, STDIN_FILENO);
-          dup2(fd[WRITE_END], STDOUT_FILENO);
+          dup2(in_fd, STDIN_FILENO); // lit le pipe precedant
+          dup2(fd[WRITE_END], STDOUT_FILENO); //  ecrit dans le nouveau pipe
           execvp(commands[n_task][0], commands[n_task]);
           exit(EXIT_FAILURE);
           break;
       default: // Parent
-          close(fd[WRITE_END]);
-          close(in_fd);
-          run_pipeline(commands,fd[READ_END],n_task+1);
+          close(fd[WRITE_END]); // plus besoin
+          close(in_fd); // plus besoin
+          run_pipeline(commands,fd[READ_END],n_task+1); // on passe la sortie du nouveau pipe au suivant
           break;
     }
 }
