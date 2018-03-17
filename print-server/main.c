@@ -7,6 +7,7 @@
 #include <semaphore.h>
 
 sem_t sem_files_ready;
+pthread_mutex_t tasks_locker = PTHREAD_MUTEX_INITIALIZER;
 
 struct task {
   int file_id;
@@ -25,9 +26,10 @@ struct queue * create_queue () {
 }
 
 void pop_queue (struct queue * tasks) {
-  // to do: add some mutex
   if(tasks->head == NULL)
     exit(EXIT_FAILURE);
+
+  pthread_mutex_lock(&tasks_locker);
 
   if(tasks->head->next_task == NULL) {
     free(tasks->head);
@@ -36,14 +38,15 @@ void pop_queue (struct queue * tasks) {
     free(tasks->head);
     tasks->head = new_head;
   }
+  pthread_mutex_unlock(&tasks_locker);
 }
 
 void push_queue (struct queue * tasks, int file_id, int delay) {
-  // to do: add some mutex
   if(tasks == NULL) {
     exit(EXIT_FAILURE);
   }
 
+  pthread_mutex_lock(&tasks_locker);
   struct task *new_task = malloc(sizeof(*new_task));
   if (new_task == NULL) {
     exit(EXIT_FAILURE);
@@ -65,12 +68,12 @@ void push_queue (struct queue * tasks, int file_id, int delay) {
   }
   // on permet aux imprimantes de travailler
   sem_post(&sem_files_ready);
+  pthread_mutex_unlock(&tasks_locker);
 
 }
 
 void * print_file (void * arg) {
   struct queue * tasks = arg;
-
   for (;;) {
     sem_wait(&sem_files_ready);
     printf("file printed\n");
