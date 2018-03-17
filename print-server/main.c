@@ -25,20 +25,24 @@ struct queue * create_queue () {
   return m_queue;
 }
 
-void pop_queue (struct queue * tasks) {
+int pop_queue (struct queue * tasks) {
   if(tasks->head == NULL)
     exit(EXIT_FAILURE);
 
   pthread_mutex_lock(&tasks_locker);
 
+  int file_id;
   if(tasks->head->next_task == NULL) {
+    file_id = tasks->head->file_id;
     free(tasks->head);
   } else {
     struct task * new_head = tasks->head->next_task;
+    file_id = tasks->head->file_id;
     free(tasks->head);
     tasks->head = new_head;
   }
   pthread_mutex_unlock(&tasks_locker);
+  return file_id;
 }
 
 void push_queue (struct queue * tasks, int file_id, int delay) {
@@ -72,21 +76,42 @@ void push_queue (struct queue * tasks, int file_id, int delay) {
 
 }
 
+struct arg_print_file { struct queue * tasks; int printer_id; };
+
 void * print_file (void * arg) {
-  struct queue * tasks = arg;
+
+  struct arg_print_file * arg_pf = arg;
+  struct queue * tasks = arg_pf->tasks;
+  int printer_id = arg_pf->printer_id;
+
+  char f_name[12];
+  sprintf(f_name, "%d-printer", printer_id);
+
   for (;;) {
+    FILE *f = fopen(f_name, "a");
     sem_wait(&sem_files_ready);
     printf("file printed\n");
-    pop_queue(tasks);
+
+    time_t unix_time;
+    unix_time = time(NULL);
+    int file_id = pop_queue(tasks);
+    char buffer[50] = "";
+    sprintf(buffer, "%ld print file %d\n", unix_time, file_id);
+
+    fprintf(f, "%s", buffer);
+    fclose(f);
   }
+
 }
 
 void * waiting_for_printing (void * arg) {
   struct queue * tasks = arg;
+  struct arg_print_file arg_pf = { .tasks = tasks, .printer_id = 0 };
+
   pthread_t thr_printer;
 
-  pthread_create(&thr_printer, NULL, print_file, tasks);
-
+  pthread_create(&thr_printer, NULL, print_file, &arg_pf);
+  pthread_join(thr_printer, NULL);
 }
 
 
@@ -154,8 +179,7 @@ int main(int argc, char ** argv) {
   pthread_create(&thr_input, NULL, read_input, tasks);
   pthread_create(&thr_waiter, NULL, waiting_for_printing, tasks);
 
-
   pthread_join(thr_input, NULL);
-  //pthread_join(thr_waiter, NULL);
+  pthread_join(thr_waiter, NULL);
   return 0;
 }
