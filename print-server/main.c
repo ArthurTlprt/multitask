@@ -4,7 +4,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <semaphore.h>
 
+sem_t sem_files_ready;
 
 struct task {
   int file_id;
@@ -16,15 +18,28 @@ struct queue {
   struct task * head;
 };
 
-
 struct queue * create_queue () {
   struct queue * m_queue = malloc(sizeof(*m_queue));
   m_queue->head = NULL;
   return m_queue;
 }
 
-void push_queue (struct queue *tasks, int file_id, int delay) {
+void pop_queue (struct queue * tasks) {
+  // to do: add some mutex
+  if(tasks->head == NULL)
+    exit(EXIT_FAILURE);
 
+  if(tasks->head->next_task == NULL) {
+    free(tasks->head);
+  } else {
+    struct task * new_head = tasks->head->next_task;
+    free(tasks->head);
+    tasks->head = new_head;
+  }
+}
+
+void push_queue (struct queue * tasks, int file_id, int delay) {
+  // to do: add some mutex
   if(tasks == NULL) {
     exit(EXIT_FAILURE);
   }
@@ -37,7 +52,6 @@ void push_queue (struct queue *tasks, int file_id, int delay) {
   new_task->file_id = file_id;
   new_task->delay = delay;
 
-
   if(tasks->head == NULL) {
     tasks->head = new_task;
   } else {
@@ -49,7 +63,29 @@ void push_queue (struct queue *tasks, int file_id, int delay) {
 
     item->next_task = new_task;
   }
+  // on permet aux imprimantes de travailler
+  sem_post(&sem_files_ready);
+
 }
+
+void * print_file (void * arg) {
+  struct queue * tasks = arg;
+
+  for (;;) {
+    sem_wait(&sem_files_ready);
+    printf("file printed\n");
+    pop_queue(tasks);
+  }
+}
+
+void * waiting_for_printing (void * arg) {
+  struct queue * tasks = arg;
+  pthread_t thr_printer;
+
+  pthread_create(&thr_printer, NULL, print_file, tasks);
+
+}
+
 
 void read_line(struct queue * tasks, char * line) {
 
@@ -58,9 +94,9 @@ void read_line(struct queue * tasks, char * line) {
     const char s[2] = " ";
 
     pr = strtok(line, s);
-    printf("%s\n", pr);
+    printf("%s ", pr);
     c_file_id = strtok(NULL, s);
-    printf("%s\n", c_file_id);
+    printf("%s ", c_file_id);
     c_delay = strtok(NULL, s);
     printf("%s\n", c_delay);
 
@@ -80,9 +116,8 @@ void read_line(struct queue * tasks, char * line) {
 
 }
 
-
 void * read_input(void * arg) {
-  struct queue* tasks = (struct queue*) arg;
+  struct queue * tasks = arg;
   char * file_name = "input.txt";
   FILE *f;
 
@@ -104,11 +139,20 @@ void * read_input(void * arg) {
 
 int main(int argc, char ** argv) {
 
-  struct queue * tasks = create_queue();
+  // création du buffer
+  struct queue * tasks = malloc(sizeof(*tasks));
 
+  sem_init(&sem_files_ready, 0, 0);
+  // on met l'input dans un thread
+  // comme ça une attente de fichier ne bloque pas les impressions
   pthread_t thr_input;
-  pthread_create(&thr_input, NULL, read_input, &tasks);
-  pthread_join(thr_input, NULL);
+  pthread_t thr_waiter;
 
+  pthread_create(&thr_input, NULL, read_input, tasks);
+  pthread_create(&thr_waiter, NULL, waiting_for_printing, tasks);
+
+
+  pthread_join(thr_input, NULL);
+  //pthread_join(thr_waiter, NULL);
   return 0;
 }
