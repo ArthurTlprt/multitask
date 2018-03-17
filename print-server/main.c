@@ -3,6 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <pthread.h>
+
 
 struct task {
   int file_id;
@@ -35,7 +37,6 @@ void push_queue (struct queue *tasks, int file_id, int delay) {
   new_task->file_id = file_id;
   new_task->delay = delay;
 
-  printf("pouet\n");
 
   if(tasks->head == NULL) {
     tasks->head = new_task;
@@ -69,6 +70,7 @@ void read_line(struct queue * tasks, char * line) {
     push_queue(tasks, file_id, delay);
 
   } else if(line[0] == 's') {
+    printf("waiting for files...\n");
     char * token = " ";
     const char * s = " ";
     token = strtok(line, s);
@@ -79,14 +81,16 @@ void read_line(struct queue * tasks, char * line) {
 }
 
 
-void read_input(struct queue* tasks, char * file_name) {
+void * read_input(void * arg) {
+  struct queue* tasks = (struct queue*) arg;
+  char * file_name = "input.txt";
   FILE *f;
 
   char c;
   f=fopen(file_name,"r");
   if(f == NULL) {
     printf("unable to open the file\n");
-    return;
+    return NULL;
   }
 
   char line [256];
@@ -102,10 +106,9 @@ int main(int argc, char ** argv) {
 
   struct queue * tasks = create_queue();
 
-  if(argc == 2) {
-    read_input(tasks, argv[1]);
-  } else
-    printf("you need to specify the text file\n");
+  pthread_t thr_input;
+  pthread_create(&thr_input, NULL, read_input, &tasks);
+  pthread_join(thr_input, NULL);
 
   return 0;
 }
