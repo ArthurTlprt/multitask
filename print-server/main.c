@@ -90,25 +90,27 @@ void * print_file (void * arg) {
   for (;;) {
     FILE *f = fopen(f_name, "a");
     sem_wait(&sem_files_ready);
-    printf("file printed\n");
 
     time_t unix_time;
     unix_time = time(NULL);
+
     struct task * print_task = pop_queue(tasks);
     char buffer[50] = "";
-    int file_id= print_task->file_id;
-    int delay= print_task->delay;
-    free(print_task);
-    sprintf(buffer, "%ld print file %d\n", unix_time,file_id);
-    printf("seconde : %d\n",delay);
+
+    sprintf(buffer, "%ld print file %d\n", unix_time, print_task->file_id);
     fprintf(f, "%s", buffer);
-    sleep(delay);
+
+    sleep(print_task->delay);
     fclose(f);
+
+    printf("file printed\n");
+
+    free(print_task);
   }
 
 }
 
-void * waiting_for_printing (void * arg) {
+void waiting_for_printing (void * arg) {
   struct queue * tasks = arg;
   struct arg_print_file arg_pf0 = { .tasks = tasks, .printer_id = 0 };
   struct arg_print_file arg_pf1 = { .tasks = tasks, .printer_id = 1 };
@@ -136,18 +138,18 @@ void read_line(struct queue * tasks, char * line) {
     const char s[2] = " ";
 
     pr = strtok(line, s);
-    printf("%s ", pr);
+    printf("new file in queue: ");
     c_file_id = strtok(NULL, s);
     printf("%s ", c_file_id);
     c_delay = strtok(NULL, s);
-    printf("%s\n", c_delay);
+    printf("%s", c_delay);
 
     int file_id = atoi(c_file_id);
     int delay = atoi(c_delay);
     push_queue(tasks, file_id, delay);
 
   } else if(line[0] == 's') {
-    printf("waiting for files...\n");
+    printf("waiting for files...\n\n");
     char * token = " ";
     const char * s = " ";
     token = strtok(line, s);

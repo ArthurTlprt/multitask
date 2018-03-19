@@ -1,9 +1,9 @@
-print_file 1 3
+print_file 1 5
 sleep 3
-print_file 2 100
-print_file 3 100
-print_file 4 100
+print_file 2 2
+print_file 3 3
+print_file 4 5
 sleep 1
-print_file 5 3
+print_file 5 2
 sleep 2
-print_file 6 6
+print_file 6 1
