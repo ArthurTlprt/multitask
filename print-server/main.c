@@ -29,6 +29,7 @@ struct task * pop_queue (struct queue * tasks) {
   if(tasks->head == NULL)
     exit(EXIT_FAILURE);
 
+  // je bloque l'édition de la file aux autres thread
   pthread_mutex_lock(&tasks_locker);
 
   struct task * our_task;
@@ -51,6 +52,7 @@ void push_queue (struct queue * tasks, int file_id, int delay) {
     exit(EXIT_FAILURE);
   }
 
+  // je bloque l'édition de la file aux autres thread
   pthread_mutex_lock(&tasks_locker);
   struct task *new_task = malloc(sizeof(*new_task));
   if (new_task == NULL) {
@@ -189,8 +191,8 @@ int main(int argc, char ** argv) {
   // on met l'input dans un thread
   // comme ça une attente de fichier ne bloque pas les impressions
   pthread_t thr_input;
-  //pthread_t thr_waiter;
 
+  // un thread pour la lecture des requetes d'impression
   pthread_create(&thr_input, NULL, read_input, tasks);
   waiting_for_printing(tasks);
 
