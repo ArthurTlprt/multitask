@@ -25,24 +25,25 @@ struct queue * create_queue () {
   return m_queue;
 }
 
-int pop_queue (struct queue * tasks) {
+struct task * pop_queue (struct queue * tasks) {
   if(tasks->head == NULL)
     exit(EXIT_FAILURE);
 
   pthread_mutex_lock(&tasks_locker);
 
-  int file_id;
+  struct task * our_task;
+
   if(tasks->head->next_task == NULL) {
-    file_id = tasks->head->file_id;
-    free(tasks->head);
+    our_task = tasks->head;
+  //  free(tasks->head);
   } else {
     struct task * new_head = tasks->head->next_task;
-    file_id = tasks->head->file_id;
-    free(tasks->head);
+    our_task = tasks->head;
+  //  free(tasks->head);
     tasks->head = new_head;
   }
   pthread_mutex_unlock(&tasks_locker);
-  return file_id;
+  return our_task;
 }
 
 void push_queue (struct queue * tasks, int file_id, int delay) {
@@ -58,7 +59,6 @@ void push_queue (struct queue * tasks, int file_id, int delay) {
 
   new_task->file_id = file_id;
   new_task->delay = delay;
-
   if(tasks->head == NULL) {
     tasks->head = new_task;
   } else {
@@ -94,11 +94,15 @@ void * print_file (void * arg) {
 
     time_t unix_time;
     unix_time = time(NULL);
-    int file_id = pop_queue(tasks);
+    struct task * print_task = pop_queue(tasks);
     char buffer[50] = "";
-    sprintf(buffer, "%ld print file %d\n", unix_time, file_id);
-
+    int file_id= print_task->file_id;
+    int delay= print_task->delay;
+    free(print_task);
+    sprintf(buffer, "%ld print file %d\n", unix_time,file_id);
+    printf("seconde : %d\n",delay);
     fprintf(f, "%s", buffer);
+    sleep(delay);
     fclose(f);
   }
 
@@ -106,12 +110,22 @@ void * print_file (void * arg) {
 
 void * waiting_for_printing (void * arg) {
   struct queue * tasks = arg;
-  struct arg_print_file arg_pf = { .tasks = tasks, .printer_id = 0 };
+  struct arg_print_file arg_pf0 = { .tasks = tasks, .printer_id = 0 };
+  struct arg_print_file arg_pf1 = { .tasks = tasks, .printer_id = 1 };
+  struct arg_print_file arg_pf2 = { .tasks = tasks, .printer_id = 2 };
 
-  pthread_t thr_printer;
+  pthread_t thr_printer1;
+  pthread_t thr_printer2;
+  pthread_t thr_printer3;
 
-  pthread_create(&thr_printer, NULL, print_file, &arg_pf);
-  pthread_join(thr_printer, NULL);
+  pthread_create(&thr_printer1, NULL, print_file, &arg_pf0);
+  pthread_create(&thr_printer2, NULL, print_file, &arg_pf1);
+  pthread_create(&thr_printer3, NULL, print_file, &arg_pf2);
+
+  pthread_join(thr_printer1, NULL);
+  pthread_join(thr_printer2, NULL);
+  pthread_join(thr_printer3, NULL);
+
 }
 
 
@@ -130,7 +144,6 @@ void read_line(struct queue * tasks, char * line) {
 
     int file_id = atoi(c_file_id);
     int delay = atoi(c_delay);
-
     push_queue(tasks, file_id, delay);
 
   } else if(line[0] == 's') {
@@ -174,12 +187,12 @@ int main(int argc, char ** argv) {
   // on met l'input dans un thread
   // comme ça une attente de fichier ne bloque pas les impressions
   pthread_t thr_input;
-  pthread_t thr_waiter;
+  //pthread_t thr_waiter;
 
   pthread_create(&thr_input, NULL, read_input, tasks);
-  pthread_create(&thr_waiter, NULL, waiting_for_printing, tasks);
+  waiting_for_printing(tasks);
 
   pthread_join(thr_input, NULL);
-  pthread_join(thr_waiter, NULL);
+//  pthread_join(thr_waiter, NULL);
   return 0;
 }
