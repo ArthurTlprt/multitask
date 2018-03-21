@@ -161,9 +161,15 @@ void read_line(struct queue * tasks, char * line) {
 
 }
 
+
+struct arg_read_input { struct queue * tasks; char * file_name;};
+
 void * read_input(void * arg) {
-  struct queue * tasks = arg;
-  char * file_name = "input.txt";
+
+  struct arg_read_input * arg_ri = arg;
+  struct queue * tasks = arg_ri->tasks;
+
+  char * file_name = arg_ri->file_name;
   FILE *f;
 
   char c;
@@ -184,8 +190,14 @@ void * read_input(void * arg) {
 
 int main(int argc, char ** argv) {
 
+  if(argc != 2) {
+    printf("you need to specify the text file\n");
+    return -1;
+  }
+
   // création du buffer
   struct queue * tasks = malloc(sizeof(*tasks));
+  struct arg_read_input arg_ri = { .tasks = tasks, .file_name = argv[1] };
 
   sem_init(&sem_files_ready, 0, 0);
   // on met l'input dans un thread
@@ -193,7 +205,7 @@ int main(int argc, char ** argv) {
   pthread_t thr_input;
 
   // un thread pour la lecture des requetes d'impression
-  pthread_create(&thr_input, NULL, read_input, tasks);
+  pthread_create(&thr_input, NULL, read_input, &arg_ri);
   waiting_for_printing(tasks);
 
   pthread_join(thr_input, NULL);
